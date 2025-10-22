@@ -17,7 +17,7 @@ async function sendParentVerificationEmail(parentEmail, token, { childName, chil
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
       <h2 style="color:#007BFF;">👨‍👩‍👧 Parent Verification for ${childName}</h2>
       <p>Hello,</p>
-      <p>Your child <strong>${childName}</strong> (<a href="mailto:${childEmail}">${childEmail}</a>) has created a new account in the Child Monitoring System.</p>
+      <p>Your child <strong>${childName}</strong> (<a href="mailto:${childEmail}">${childEmail}</a>) has created a new account on the Tammeny Application.</p>
       <p>To confirm and approve this account, please click the button below:</p>
       
       <p style="margin:20px 0;">

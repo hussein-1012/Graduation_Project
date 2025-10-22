@@ -63,6 +63,8 @@ let Register = async (req, res) => {
   try {
     const { fullname, email, password, role, age, parentEmail } = req.body;
 
+    const verificationDocument = req.file ? req.file.path : null;
+
     if (!fullname || !email || !password || !age) {
       return res.status(400).json({
         status: httpStatus.FAIL,
@@ -93,6 +95,13 @@ let Register = async (req, res) => {
       }
     }
 
+    if (role === "therapist" && !verificationDocument) {
+      return res.status(400).json({
+        status: httpStatus.FAIL,
+        error: "Therapist must upload a verification document.",
+      });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = new User({
@@ -106,6 +115,9 @@ let Register = async (req, res) => {
       isEmailVerified: false,
       emailVerificationToken: crypto.randomBytes(32).toString("hex"),
       emailVerificationExpires: Date.now() + 60 * 60 * 1000,
+
+      verificationDocument: verificationDocument || null,
+      isApproved: role === "therapist" ? false : true, 
     });
 
     await newUser.save();
@@ -130,7 +142,10 @@ let Register = async (req, res) => {
 
     res.status(201).json({
       status: httpStatus.SUCCESS,
-      message: "User registered successfully. Please verify your email.",
+      message:
+        role === "therapist"
+          ? "Therapist registered successfully. Waiting for admin approval."
+          : "User registered successfully. Please verify your email.",
       data: {
         user: {
           id: newUser._id,
@@ -141,6 +156,8 @@ let Register = async (req, res) => {
           parentEmail: newUser.parentEmail,
           parentVerified: newUser.parentVerified,
           isEmailVerified: newUser.isEmailVerified,
+          isApproved: newUser.isApproved,
+          verificationDocument: newUser.verificationDocument,
         },
       },
     });
@@ -195,6 +212,13 @@ let Login = async (req, res) => {
       });
     }
 
+    if (user.role === "therapist" && !user.isApproved) {
+      return res.status(403).json({
+        status: httpStatus.FAIL,
+        message: "Your account is awaiting admin approval.",
+      });
+    }
+
     const token = generateJWT({
       email: user.email,
       id: user._id,
@@ -210,11 +234,31 @@ let Login = async (req, res) => {
           fullname: user.fullname,
           email: user.email,
           role: user.role,
+          verificationDocument: user.verificationDocument,
         },
         token,
       },
     });
   } catch (err) {
+    res.status(500).json({ status: httpStatus.ERROR, error: err.message });
+  }
+};
+
+let approveTherapist = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    
+    if (!user || user.role !== 'therapist') {
+      return res.status(404)
+      .json({ status: httpStatus.FAIL, message: 'Therapist not found' });
+    }
+    user.isApproved = true;
+    await user.save();
+    
+    res.status(200)
+    .json({ status: httpStatus.SUCCESS, message: 'Therapist approved successfully' });
+  } 
+  catch (err) {
     res.status(500).json({ status: httpStatus.ERROR, error: err.message });
   }
 };
@@ -225,5 +269,6 @@ module.exports = {
     UpdateUser,
     deleteUser,
     Register,
-    Login
+    Login,
+    approveTherapist
 };

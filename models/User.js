@@ -61,6 +61,20 @@ const UserSchema = new mongoose.Schema(
     parentVerificationExpires: { type: Date },
     
     parentId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, 
+    
+    verificationDocument: {
+      type: String,
+      required: function () {
+        return this.role === UserRoles.THERAPIST;
+      },
+    },
+
+    isApproved: { 
+      type: Boolean, 
+      default: function () {
+        return this.role !== UserRoles.THERAPIST;
+      } 
+    },
   },
     { timestamps: true }
 );
